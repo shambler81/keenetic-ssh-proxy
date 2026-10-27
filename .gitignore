@@ -1,0 +1,5 @@
+.tools/
+go*.windows-amd64.zip
+dist/keenetic-ssh-proxy
+*.log
+*.pid

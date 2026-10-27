@@ -1,0 +1,37 @@
+#!/bin/sh
+# Entware init.d service. Installation is a separate manual step.
+APP=/opt/bin/keenetic-ssh-proxy
+DIR=/opt/etc/ssh-proxy
+PIDFILE=/opt/var/run/keenetic-ssh-proxy.pid
+LOG=/opt/var/log/keenetic-ssh-proxy.log
+
+is_ours() {
+    [ -s "$PIDFILE" ] || return 1
+    pid=$(cat "$PIDFILE")
+    case "$pid" in ''|*[!0-9]*) return 1;; esac
+    [ -r "/proc/$pid/cmdline" ] || return 1
+    tr '\000' '\n' < "/proc/$pid/cmdline" | grep -Fx "$APP" >/dev/null
+}
+
+case "$1" in
+  start)
+    is_ours && exit 0
+    [ -x "$APP" ] && [ -r "$DIR/web-password" ] && [ -r "$DIR/listen" ] || exit 1
+    listen=$(cat "$DIR/listen")
+    mkdir -p /opt/var/run /opt/var/log
+    "$APP" --listen "$listen" >>"$LOG" 2>&1 </dev/null &
+    echo "$!" > "$PIDFILE"
+    ;;
+  stop)
+    if is_ours; then kill "$(cat "$PIDFILE")"; fi
+    rm -f "$PIDFILE"
+    ;;
+  restart)
+    "$0" stop
+    "$0" start
+    ;;
+  status)
+    if is_ours; then echo running; else echo stopped; exit 1; fi
+    ;;
+  *) echo "Usage: $0 {start|stop|restart|status}"; exit 2;;
+esac
